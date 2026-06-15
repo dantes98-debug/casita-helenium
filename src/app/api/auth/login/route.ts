@@ -56,9 +56,10 @@ export async function POST(req: NextRequest) {
     const authBody = await authRes.json()
     const success = authRes.ok
 
-    // Record attempt
-    await supabaseAdmin.from('login_attempts').insert({ ip_address: ip, email, success }).throwOnError()
-      .catch(() => { /* non-critical, ignore */ })
+    // Record attempt (non-critical — ignore errors)
+    try {
+      await supabaseAdmin.from('login_attempts').insert({ ip_address: ip, email, success })
+    } catch { /* ignore */ }
 
     if (!success) {
       const remaining = MAX_ATTEMPTS - (count ?? 0) - 1
