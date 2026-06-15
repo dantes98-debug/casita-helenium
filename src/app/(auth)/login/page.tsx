@@ -27,7 +27,8 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      const data = await res.json()
+      let data: Record<string, string> = {}
+      try { data = await res.json() } catch { /* empty body */ }
       if (!res.ok) throw new Error(data.error ?? 'Error al iniciar sesión')
       await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
       router.push('/dashboard')
