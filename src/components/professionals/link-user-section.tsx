@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Link2, Unlink, Loader2, User } from 'lucide-react'
+import { Link2, Unlink, Loader2, User, KeyRound } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useRouter } from 'next/navigation'
 
@@ -24,6 +24,20 @@ export function LinkUserSection({ professionalId, linkedUserId, linkedEmail, ava
   const [open, setOpen] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetting, setResetting] = useState(false)
+
+  async function handleResetPassword() {
+    if (!linkedEmail) return
+    if (!confirm(`¿Enviar email de recuperación de contraseña a ${linkedEmail}?`)) return
+    setResetting(true)
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(linkedEmail, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+    })
+    setResetting(false)
+    if (error) { toast.error('Error al enviar email: ' + error.message); return }
+    toast.success(`Email de recuperación enviado a ${linkedEmail}`)
+  }
 
   async function handleLink() {
     if (!selectedUserId) { toast.error('Seleccioná un usuario'); return }
@@ -74,9 +88,14 @@ export function LinkUserSection({ professionalId, linkedUserId, linkedEmail, ava
                   <Badge className="text-xs bg-teal-100 text-teal-700 mt-0.5">Vinculado</Badge>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleUnlink} disabled={loading} className="text-red-500 hover:text-red-600">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={handleResetPassword} disabled={resetting} title="Enviar email de recuperación de contraseña" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50">
+                  {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleUnlink} disabled={loading} className="text-red-500 hover:text-red-600">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
