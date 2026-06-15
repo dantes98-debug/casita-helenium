@@ -72,7 +72,7 @@ export function AppointmentsCalendar({ appointments, professionals, newAppointme
 
   const baseDate = addWeeks(new Date(), weekOffset)
   const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 })
-  const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i)) // Mon–Sat
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)) // Mon–Sun
 
   const profColorMap = useMemo(() =>
     new Map(professionals.map((p, i) => [p.id, PROF_COLORS[i % PROF_COLORS.length]])),
@@ -107,7 +107,7 @@ export function AppointmentsCalendar({ appointments, professionals, newAppointme
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm font-medium min-w-[220px] text-center">
-            {format(weekStart, "d 'de' MMMM", { locale: es })} — {format(addDays(weekStart, 5), "d 'de' MMMM yyyy", { locale: es })}
+            {format(weekStart, "d 'de' MMMM", { locale: es })} — {format(addDays(weekStart, 6), "d 'de' MMMM yyyy", { locale: es })}
           </span>
           <Button variant="outline" size="sm" onClick={() => setWeekOffset(w => w + 1)}>
             <ChevronRight className="h-4 w-4" />

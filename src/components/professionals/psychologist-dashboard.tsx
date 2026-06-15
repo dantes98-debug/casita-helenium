@@ -51,7 +51,7 @@ export function PsychologistDashboard({ professional, appointments, patients, pa
   const todayAppts = useMemo(() => appointments.filter(a => isSameDay(parseISO(a.start_time), now)), [appointments])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const upcomingAppts = useMemo(() =>
-    appointments.filter(a => isAfter(parseISO(a.start_time), now) && a.status === 'confirmed').slice(0, 10),
+    appointments.filter(a => isAfter(parseISO(a.start_time), now) && (a.status === 'confirmed' || a.status === 'reserved')).slice(0, 10),
     [appointments]
   )
 
