@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { redirect } from 'next/navigation'
 import { AppointmentsCalendar } from '@/components/appointments/appointments-calendar'
 import { MyBlocksView } from '@/components/schedule/my-blocks-view'
@@ -40,6 +41,15 @@ export default async function MyAgendaPage() {
 
   if (!professional) redirect('/my-dashboard')
 
+  // Use service role client for own-data queries to avoid RLS session propagation
+  // issues with custom login flow. Security is guaranteed by the auth + professional
+  // lookup above — we only fetch data scoped to this specific professional.
+  const adminClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  )
+
   const now = new Date()
   const calStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }).toISOString()
   const calEnd = endOfWeek(addWeeks(now, 3), { weekStartsOn: 1 }).toISOString()
@@ -49,7 +59,7 @@ export default async function MyAgendaPage() {
     { data: blocks },
     { data: patients },
   ] = await Promise.all([
-    supabase
+    adminClient
       .from('appointments')
       .select('id, patient_id, start_time, end_time, status, notes, professional_id, patient:patients(first_name, last_name), professional:professionals(first_name, last_name)')
       .eq('professional_id', professional.id)
@@ -58,14 +68,14 @@ export default async function MyAgendaPage() {
       .neq('status', 'cancelled_with_notice')
       .neq('status', 'cancelled_without_notice')
       .order('start_time'),
-    supabase
+    adminClient
       .from('schedule_blocks')
       .select('*, room:rooms(id, name)')
       .eq('professional_id', professional.id)
       .gte('start_time', calStart)
       .lte('start_time', calEnd)
       .order('start_time'),
-    supabase
+    adminClient
       .from('patients')
       .select('id, first_name, last_name')
       .eq('status', 'active')

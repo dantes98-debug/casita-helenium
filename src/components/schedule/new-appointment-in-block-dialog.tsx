@@ -82,7 +82,7 @@ export function NewAppointmentInBlockDialog({ block, patients, professionalId, o
       .single()
     setLoading(false)
     if (error) { toast.error('Error al crear turno: ' + error.message); return }
-    onCreated(data as Appointment)
+    onCreated(data as unknown as Appointment)
     toast.success('Turno agendado')
     onClose()
   }
