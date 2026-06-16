@@ -82,10 +82,12 @@ export function MyBlocksView({ blocks: initialBlocks, appointments, patients, pr
     days.forEach(d => map.set(format(d, 'yyyy-MM-dd'), []))
     blocksThisWeek.forEach(b => {
       const key = format(parseISO(b.start_time), 'yyyy-MM-dd')
-      map.get(key)?.push(b)
+      const arr = map.get(key)
+      if (arr) arr.push(b)
     })
     return map
-  }, [blocksThisWeek, days])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocksThisWeek])
 
   const hasBlocksThisWeek = blocksThisWeek.length > 0
 
