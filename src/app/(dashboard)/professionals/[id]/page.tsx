@@ -37,8 +37,8 @@ export default async function ProfessionalDetailPage({ params }: { params: Promi
     // All appointments (last 6 months) for reports
     supabase.from('appointments').select('id, start_time, status, patient_id')
       .eq('professional_id', id).gte('start_time', new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString()),
-    // Profiles with role=professional for linking
-    supabase.from('profiles').select('id, email, full_name').eq('role', 'professional').order('full_name'),
+    // All profiles available for linking (any role)
+    supabase.from('profiles').select('id, email, full_name, role').order('full_name'),
   ])
 
   const patientIds = (patients ?? []).map(p => p.id)
