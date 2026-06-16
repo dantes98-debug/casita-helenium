@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UserCircle, Calendar, CreditCard,
   AlertCircle, BarChart3, Settings, LogOut, Heart, ClipboardList,
-  DollarSign, TrendingUp, Shield, Inbox, Moon, Sun,
+  DollarSign, TrendingUp, Shield, Inbox, Moon, Sun, Building2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -43,6 +43,7 @@ const navGroups: NavGroup[] = [
       { href: '/patients', label: 'Pacientes', icon: UserCircle, roles: ['super_admin', 'admin', 'coordinator'] },
       { href: '/professionals', label: 'Profesionales', icon: Users, roles: ['super_admin', 'admin', 'coordinator'] },
       { href: '/appointments', label: 'Agenda', icon: Calendar, roles: ['super_admin', 'admin', 'coordinator'] },
+      { href: '/schedule', label: 'Consultorios', icon: Building2, roles: ['super_admin', 'admin', 'coordinator'] },
     ],
   },
   {
