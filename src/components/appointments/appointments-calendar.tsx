@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns'
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, isAfter } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
@@ -65,8 +65,19 @@ interface Props {
   newAppointmentBase?: string
 }
 
+function getInitialWeekOffset(appointments: Appointment[]): number {
+  const now = new Date()
+  const upcoming = appointments
+    .filter(a => isAfter(parseISO(a.start_time), now))
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+  if (!upcoming.length) return 0
+  const firstWeekStart = startOfWeek(parseISO(upcoming[0].start_time), { weekStartsOn: 1 })
+  const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 })
+  return Math.round((firstWeekStart.getTime() - currentWeekStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
+}
+
 export function AppointmentsCalendar({ appointments, professionals, newAppointmentBase = '/appointments' }: Props) {
-  const [weekOffset, setWeekOffset] = useState(0)
+  const [weekOffset, setWeekOffset] = useState(() => getInitialWeekOffset(appointments))
   const [quickSession, setQuickSession] = useState<Appointment | null>(null)
   const [localAppts, setLocalAppts] = useState(appointments)
 
