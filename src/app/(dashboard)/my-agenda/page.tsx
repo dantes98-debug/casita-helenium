@@ -17,7 +17,8 @@ export default async function MyAgendaPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'professional') redirect('/appointments')
+  const allowedRoles = ['professional', 'admin', 'super_admin', 'coordinator']
+  if (!allowedRoles.includes(profile?.role ?? '')) redirect('/appointments')
 
   let { data: professional } = await supabase
     .from('professionals')

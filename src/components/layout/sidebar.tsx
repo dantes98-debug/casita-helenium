@@ -32,7 +32,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'admin', 'coordinator'] },
       { href: '/my-dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['professional'] },
-      { href: '/my-agenda', label: 'Mi agenda', icon: Calendar, roles: ['professional'] },
+      { href: '/my-agenda', label: 'Mi agenda', icon: Calendar, roles: ['professional', 'super_admin', 'admin', 'coordinator'] },
       { href: '/admissions', label: 'Admisiones', icon: Inbox, roles: ['super_admin', 'admin', 'coordinator'] },
     ],
   },
