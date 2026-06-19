@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SettingsForm } from '@/components/settings/settings-form'
+import { PasswordChangeForm } from '@/components/settings/password-change-form'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single()
+  const { data: centerSettings } = await supabase.from('center_settings').select('*').limit(1).maybeSingle()
 
   return (
     <div className="p-6 space-y-6 max-w-2xl">
@@ -13,6 +16,10 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
         <p className="text-gray-500 text-sm">Ajustes del sistema y tu cuenta</p>
       </div>
+
+      {(profile?.role === 'super_admin' || profile?.role === 'admin') && (
+        <SettingsForm initialSettings={centerSettings} />
+      )}
 
       <Card>
         <CardHeader><CardTitle className="text-base">Tu perfil</CardTitle></CardHeader>
@@ -25,6 +32,8 @@ export default async function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <PasswordChangeForm />
 
       <Card>
         <CardHeader><CardTitle className="text-base">Información del sistema</CardTitle></CardHeader>

@@ -16,7 +16,8 @@ import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Loader2, Edit } from 'lucide-react'
+import { Plus, Loader2, Edit, UserPlus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 type AdmissionRow = Admission & {
   professional?: { first_name: string; last_name: string } | null
@@ -57,6 +58,36 @@ export function AdmissionsView({ admissions: initial, professionals }: Props) {
   const [admissions, setAdmissions] = useState(initial)
   const [open, setOpen] = useState(false)
   const [editItem, setEditItem] = useState<AdmissionRow | null>(null)
+  const [converting, setConverting] = useState<string | null>(null)
+  const router = useRouter()
+
+  async function handleConvertToPatient(admission: AdmissionRow) {
+    setConverting(admission.id)
+    const supabase = createClient()
+    const { data: patient, error } = await supabase
+      .from('patients')
+      .insert({
+        first_name: admission.patient_first_name,
+        last_name: admission.patient_last_name ?? null,
+        phone: admission.phone ?? null,
+        primary_professional_id: admission.suggested_professional_id ?? null,
+        status: 'active',
+        admission_date: admission.contact_date,
+        observations: admission.reason_for_consultation ?? null,
+        patient_source: 'center',
+      })
+      .select('id')
+      .single()
+    if (error) { toast.error('Error al crear paciente: ' + error.message); setConverting(null); return }
+
+    // Update admission status to in_treatment
+    await supabase.from('admissions').update({ status: 'in_treatment' }).eq('id', admission.id)
+    setAdmissions(prev => prev.map(a => a.id === admission.id ? { ...a, status: 'in_treatment' } : a))
+
+    toast.success('Paciente creado correctamente')
+    setConverting(null)
+    router.push(`/patients/${patient.id}/edit`)
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -112,9 +143,23 @@ export function AdmissionsView({ admissions: initial, professionals }: Props) {
                   {a.reason_for_consultation && <p className="text-sm text-gray-500 truncate">{a.reason_for_consultation}</p>}
                   {a.next_action && <p className="text-xs text-teal-600"><b>Próxima acción:</b> {a.next_action}</p>}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { reset({ ...a, suggested_professional_id: a.suggested_professional_id ?? '' }); setEditItem(a); setOpen(true) }}>
-                  <Edit className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {(a.status === 'assigned' || a.status === 'interview_scheduled' || a.status === 'in_evaluation') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-teal-600 border-teal-200 hover:bg-teal-50 text-xs"
+                      onClick={() => handleConvertToPatient(a)}
+                      disabled={converting === a.id}
+                    >
+                      {converting === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5 mr-1" />}
+                      Crear paciente
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => { reset({ ...a, suggested_professional_id: a.suggested_professional_id ?? '' }); setEditItem(a); setOpen(true) }}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

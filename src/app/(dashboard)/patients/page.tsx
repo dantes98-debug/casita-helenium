@@ -39,7 +39,7 @@ export default async function PatientsPage() {
 
   let patientsQuery = supabase
     .from('patients')
-    .select('*, primary_professional:professionals(first_name, last_name, profession)')
+    .select('*, primary_professional_id, primary_professional:professionals(first_name, last_name, profession)')
     .is('deleted_at', null)
     .neq('status', 'waiting_list')
     .order('last_name')
@@ -101,7 +101,7 @@ export default async function PatientsPage() {
         </TabsList>
 
         <TabsContent value="active" className="mt-4">
-          <PatientsTable patients={patients ?? []} hideProfessionalColumn={isProfessional} />
+          <PatientsTable patients={patients ?? []} hideProfessionalColumn={isProfessional} professionals={isProfessional ? undefined : professionals ?? []} />
         </TabsContent>
 
         <TabsContent value="waitlist" className="mt-4">

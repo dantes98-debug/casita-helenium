@@ -16,6 +16,8 @@ type PatientWithProfessional = Patient & {
   primary_professional?: { first_name: string; last_name: string; profession: string } | null
 }
 
+type ProfessionalOption = { id: string; first_name: string; last_name: string }
+
 const statusLabels: Record<string, string> = {
   active: 'Activo', paused: 'En pausa', discharged: 'Alta',
   inactive: 'Inactivo', waiting_list: 'Lista de espera', referred: 'Derivado',
@@ -28,12 +30,13 @@ const statusColors: Record<string, string> = {
 
 const PAGE_SIZE = 20
 
-export function PatientsTable({ patients, hideProfessionalColumn }: { patients: PatientWithProfessional[]; hideProfessionalColumn?: boolean }) {
+export function PatientsTable({ patients, hideProfessionalColumn, professionals }: { patients: PatientWithProfessional[]; hideProfessionalColumn?: boolean; professionals?: ProfessionalOption[] }) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterProfessional, setFilterProfessional] = useState('all')
   const [page, setPage] = useState(1)
 
-  useEffect(() => { setPage(1) }, [search, filterStatus])
+  useEffect(() => { setPage(1) }, [search, filterStatus, filterProfessional])
 
   function handleExport() {
     const data = filtered.map(p => ({
@@ -58,7 +61,8 @@ export function PatientsTable({ patients, hideProfessionalColumn }: { patients: 
   const filtered = patients.filter(p => {
     const matchSearch = `${p.first_name} ${p.last_name} ${p.dni ?? ''} ${p.health_insurance ?? ''}`.toLowerCase().includes(search.toLowerCase())
     const matchStatus = filterStatus === 'all' || p.status === filterStatus
-    return matchSearch && matchStatus
+    const matchProfessional = filterProfessional === 'all' || (p as any).primary_professional_id === filterProfessional
+    return matchSearch && matchStatus && matchProfessional
   })
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -81,6 +85,15 @@ export function PatientsTable({ patients, hideProfessionalColumn }: { patients: 
             {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
+        {!hideProfessionalColumn && professionals && professionals.length > 0 && (
+          <Select value={filterProfessional} onValueChange={setFilterProfessional}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Profesional" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los profesionales</SelectItem>
+              {professionals.map(p => <SelectItem key={p.id} value={p.id}>{p.last_name}, {p.first_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Card>

@@ -141,6 +141,7 @@ export default async function DashboardPage() {
   })
 
   const isEmpty = (activeProfessionals ?? 0) === 0 && (activePatients ?? 0) === 0
+  const hasDataButNoPayments = !isEmpty && monthlyRevenue === 0
 
   return (
     <div className="p-6 space-y-6">
@@ -194,11 +195,28 @@ export default async function DashboardPage() {
 
       <section>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Finanzas</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <KPICard title="Facturación del mes" value={`$${monthlyRevenue.toLocaleString('es-AR')}`} icon={<DollarSign className="h-5 w-5 text-green-600" />} color="green" />
-          <KPICard title="Cobros pendientes" value={`$${totalPending.toLocaleString('es-AR')}`} icon={<TrendingUp className="h-5 w-5 text-yellow-600" />} color="yellow" alert={totalPending > 0} />
-          <KPICard title="Deudas activas" value={activeDebts ?? 0} icon={<AlertCircle className="h-5 w-5 text-red-600" />} color="red" alert={(activeDebts ?? 0) > 0} />
-        </div>
+        {hasDataButNoPayments ? (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                <DollarSign className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-amber-800">Sin pagos registrados este mes</p>
+                <p className="text-sm text-amber-600">Registrá el primer pago para ver las métricas financieras aquí.</p>
+              </div>
+              <Link href="/payments/new" className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 transition-colors">
+                <ArrowRight className="h-4 w-4" />Registrar pago
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <KPICard title="Facturación del mes" value={`$${monthlyRevenue.toLocaleString('es-AR')}`} icon={<DollarSign className="h-5 w-5 text-green-600" />} color="green" />
+            <KPICard title="Cobros pendientes" value={`$${totalPending.toLocaleString('es-AR')}`} icon={<TrendingUp className="h-5 w-5 text-yellow-600" />} color="yellow" alert={totalPending > 0} />
+            <KPICard title="Deudas activas" value={activeDebts ?? 0} icon={<AlertCircle className="h-5 w-5 text-red-600" />} color="red" alert={(activeDebts ?? 0) > 0} />
+          </div>
+        )}
       </section>
 
       {/* P&L split */}
