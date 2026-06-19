@@ -50,7 +50,6 @@ const navGroups: NavGroup[] = [
     roles: ['professional'],
     items: [
       { href: '/patients', label: 'Pacientes', icon: UserCircle, roles: ['professional'] },
-      { href: '/appointments', label: 'Agenda', icon: Calendar, roles: ['professional'] },
       { href: '/my-profile', label: 'Mi perfil', icon: User, roles: ['professional'] },
     ],
   },
