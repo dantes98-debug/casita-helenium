@@ -16,6 +16,9 @@ export default async function MyDashboardPage() {
 
   if (profile?.role !== 'professional') redirect('/dashboard')
 
+  // Professionals land on my-agenda as their home page (has blocks + calendar)
+  redirect('/my-agenda')
+
   let { data: professional } = await supabase
     .from('professionals')
     .select('id, first_name, last_name, profession, commission_rate, room_hourly_rate')

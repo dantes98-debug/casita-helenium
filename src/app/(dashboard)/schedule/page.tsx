@@ -9,7 +9,7 @@ export default async function SchedulePage() {
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin' && profile?.role !== 'superadmin') redirect('/my-agenda')
+  if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'coordinator') redirect('/my-agenda')
 
   const now = new Date()
   const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()

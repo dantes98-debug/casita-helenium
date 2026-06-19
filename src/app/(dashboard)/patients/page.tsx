@@ -9,23 +9,60 @@ import { Plus, Users, Clock } from 'lucide-react'
 export default async function PatientsPage() {
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user!.id)
+    .single()
+
+  const isProfessional = profile?.role === 'professional'
+
+  // If professional, find their own professional record to filter patients
+  let professionalId: string | null = null
+  if (isProfessional) {
+    let { data: prof } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('user_id', user!.id)
+      .maybeSingle()
+    if (!prof && user?.email) {
+      const { data: byEmail } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('email', user.email)
+        .maybeSingle()
+      prof = byEmail
+    }
+    professionalId = prof?.id ?? null
+  }
+
+  let patientsQuery = supabase
+    .from('patients')
+    .select('*, primary_professional:professionals(first_name, last_name, profession)')
+    .is('deleted_at', null)
+    .neq('status', 'waiting_list')
+    .order('last_name')
+
+  let waitlistQuery = supabase
+    .from('patients')
+    .select('id, first_name, last_name, phone, admission_date, observations, primary_professional:professionals(first_name, last_name)')
+    .is('deleted_at', null)
+    .eq('status', 'waiting_list')
+    .order('admission_date')
+
+  if (isProfessional && professionalId) {
+    patientsQuery = patientsQuery.eq('primary_professional_id', professionalId) as any
+    waitlistQuery = waitlistQuery.eq('primary_professional_id', professionalId) as any
+  }
+
   const [
     { data: patients },
     { data: waitlist },
     { data: professionals },
   ] = await Promise.all([
-    supabase
-      .from('patients')
-      .select('*, primary_professional:professionals(first_name, last_name, profession)')
-      .is('deleted_at', null)
-      .neq('status', 'waiting_list')
-      .order('last_name'),
-    supabase
-      .from('patients')
-      .select('id, first_name, last_name, phone, admission_date, observations, primary_professional:professionals(first_name, last_name)')
-      .is('deleted_at', null)
-      .eq('status', 'waiting_list')
-      .order('admission_date'),
+    patientsQuery,
+    waitlistQuery,
     supabase
       .from('professionals')
       .select('id, first_name, last_name, profession')
@@ -41,7 +78,9 @@ export default async function PatientsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pacientes</h1>
-          <p className="text-gray-500 text-sm">{patients?.length ?? 0} pacientes activos</p>
+          <p className="text-gray-500 text-sm">
+            {isProfessional ? 'Tus pacientes asignados' : `${patients?.length ?? 0} pacientes activos`}
+          </p>
         </div>
         <Button asChild className="bg-teal-600 hover:bg-teal-700">
           <Link href="/patients/new"><Plus className="h-4 w-4 mr-2" />Nuevo paciente</Link>
@@ -62,7 +101,7 @@ export default async function PatientsPage() {
         </TabsList>
 
         <TabsContent value="active" className="mt-4">
-          <PatientsTable patients={patients ?? []} />
+          <PatientsTable patients={patients ?? []} hideProfessionalColumn={isProfessional} />
         </TabsContent>
 
         <TabsContent value="waitlist" className="mt-4">

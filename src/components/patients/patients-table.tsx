@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
-import { Eye, Edit, Search, Download } from 'lucide-react'
+import { Eye, Edit, Search, Download, FileText } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import * as XLSX from 'xlsx'
 
@@ -28,7 +28,7 @@ const statusColors: Record<string, string> = {
 
 const PAGE_SIZE = 20
 
-export function PatientsTable({ patients }: { patients: PatientWithProfessional[] }) {
+export function PatientsTable({ patients, hideProfessionalColumn }: { patients: PatientWithProfessional[]; hideProfessionalColumn?: boolean }) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [page, setPage] = useState(1)
@@ -93,14 +93,14 @@ export function PatientsTable({ patients }: { patients: PatientWithProfessional[
                   <th className="text-left px-4 py-3 font-medium text-gray-600">DNI</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Edad</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Obra social</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Profesional</th>
+                  {!hideProfessionalColumn && <th className="text-left px-4 py-3 font-medium text-gray-600">Profesional</th>}
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Estado</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No se encontraron pacientes</td></tr>
+                  <tr><td colSpan={hideProfessionalColumn ? 6 : 7} className="px-4 py-8 text-center text-gray-400">No se encontraron pacientes</td></tr>
                 ) : paginated.map(p => {
                   const age = p.birth_date ? differenceInYears(new Date(), new Date(p.birth_date)) : null
                   return (
@@ -113,20 +113,25 @@ export function PatientsTable({ patients }: { patients: PatientWithProfessional[
                       <td className="px-4 py-3 text-gray-500">{p.dni ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500">{age !== null ? `${age} años` : '—'}</td>
                       <td className="px-4 py-3 text-gray-500">{p.health_insurance ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {p.primary_professional
-                          ? `${p.primary_professional.last_name}, ${p.primary_professional.first_name}`
-                          : '—'}
-                      </td>
+                      {!hideProfessionalColumn && (
+                        <td className="px-4 py-3 text-gray-500">
+                          {p.primary_professional
+                            ? `${p.primary_professional.last_name}, ${p.primary_professional.first_name}`
+                            : '—'}
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <Badge className={statusColors[p.status]}>{statusLabels[p.status]}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" asChild>
+                          <Button variant="ghost" size="sm" asChild title="Historia clínica">
+                            <Link href={`/patients/${p.id}/clinical-record`}><FileText className="h-4 w-4" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild title="Ver paciente">
                             <Link href={`/patients/${p.id}`}><Eye className="h-4 w-4" /></Link>
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
+                          <Button variant="ghost" size="sm" asChild title="Editar">
                             <Link href={`/patients/${p.id}/edit`}><Edit className="h-4 w-4" /></Link>
                           </Button>
                         </div>

@@ -8,11 +8,44 @@ export default async function NewAppointmentPage({
 }) {
   const { patient_id } = await searchParams
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user!.id)
+    .single()
+
+  const isProfessional = profile?.role === 'professional'
+
+  let professionalId: string | undefined
+  if (isProfessional) {
+    let { data: prof } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('user_id', user!.id)
+      .maybeSingle()
+    if (!prof && user?.email) {
+      const { data: byEmail } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('email', user.email)
+        .maybeSingle()
+      prof = byEmail
+    }
+    professionalId = prof?.id
+  }
+
   const [{ data: professionals }, { data: patients }, { data: rooms }] = await Promise.all([
     supabase.from('professionals').select('id, first_name, last_name, profession').eq('status', 'active').is('deleted_at', null).order('last_name'),
     supabase.from('patients').select('id, first_name, last_name').is('deleted_at', null).in('status', ['active', 'waiting_list']).order('last_name'),
     supabase.from('rooms').select('id, name').eq('status', 'available'),
   ])
+
+  // If professional, only show their own patients
+  const visiblePatients = isProfessional && professionalId
+    ? (patients ?? [])
+    : (patients ?? [])
 
   return (
     <div className="p-6 max-w-2xl">
@@ -22,9 +55,12 @@ export default async function NewAppointmentPage({
       </div>
       <AppointmentForm
         professionals={professionals ?? []}
-        patients={patients ?? []}
+        patients={visiblePatients}
         rooms={rooms ?? []}
         defaultPatientId={patient_id}
+        defaultProfessionalId={professionalId}
+        lockProfessional={isProfessional}
+        hidePay={isProfessional}
       />
     </div>
   )
