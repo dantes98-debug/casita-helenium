@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { ClinicalRecord, ClinicalNote } from '@/types/database'
@@ -19,7 +19,7 @@ import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Loader2, Lock, FileText } from 'lucide-react'
+import { Plus, Loader2, Lock, FileText, Pencil } from 'lucide-react'
 
 type NoteRow = ClinicalNote & {
   professional?: { first_name: string; last_name: string; profession: string } | null
@@ -48,13 +48,25 @@ interface Props {
   notes: NoteRow[]
   patientId: string
   professionals: { id: string; first_name: string; last_name: string; profession: string }[]
+  defaultTab?: string
 }
 
-export function ClinicalRecordView({ record, notes: initialNotes, patientId, professionals }: Props) {
+export function ClinicalRecordView({ record, notes: initialNotes, patientId, professionals, defaultTab = 'summary' }: Props) {
   const [notes, setNotes] = useState(initialNotes)
   const [openNote, setOpenNote] = useState(false)
+  const [editingSummary, setEditingSummary] = useState(false)
+  const [summary, setSummary] = useState({
+    reason_for_consultation: record.reason_for_consultation ?? '',
+    background: record.background ?? '',
+    presumptive_diagnosis: record.presumptive_diagnosis ?? '',
+    confirmed_diagnosis: record.confirmed_diagnosis ?? '',
+    therapeutic_objectives: record.therapeutic_objectives ?? '',
+    treatment_plan: record.treatment_plan ?? '',
+    admission_interview: (record as any).admission_interview ?? '',
+  })
+  const [savingSummary, setSavingSummary] = useState(false)
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<NoteForm>({
+  const { register, handleSubmit, setValue, watch, reset, formState: { isSubmitting } } = useForm<NoteForm>({
     resolver: zodResolver(noteSchema) as any,
     defaultValues: {
       note_type: 'evolution', date: new Date().toISOString().split('T')[0],
@@ -82,9 +94,32 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
     setOpenNote(false)
   }
 
+  async function saveSummary() {
+    setSavingSummary(true)
+    const supabase = createClient()
+    const payload = Object.fromEntries(
+      Object.entries(summary).map(([k, v]) => [k, v.trim() || null])
+    )
+    const { error } = await supabase.from('clinical_records').update(payload).eq('id', record.id)
+    setSavingSummary(false)
+    if (error) { toast.error('Error al guardar: ' + error.message); return }
+    toast.success('Resumen clínico actualizado')
+    setEditingSummary(false)
+  }
+
+  const summaryFields: { key: keyof typeof summary; label: string; rows?: number }[] = [
+    { key: 'reason_for_consultation', label: 'Motivo de consulta', rows: 3 },
+    { key: 'background', label: 'Antecedentes relevantes', rows: 3 },
+    { key: 'presumptive_diagnosis', label: 'Diagnóstico presuntivo', rows: 2 },
+    { key: 'confirmed_diagnosis', label: 'Diagnóstico confirmado', rows: 2 },
+    { key: 'therapeutic_objectives', label: 'Objetivos terapéuticos', rows: 3 },
+    { key: 'treatment_plan', label: 'Plan de tratamiento', rows: 3 },
+    { key: 'admission_interview', label: 'Entrevista de admisión', rows: 3 },
+  ]
+
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="summary">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="summary">Resumen clínico</TabsTrigger>
           <TabsTrigger value="notes">Evoluciones ({notes.length})</TabsTrigger>
@@ -92,23 +127,56 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
 
         <TabsContent value="summary" className="mt-4 space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Historia clínica base</CardTitle></CardHeader>
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle className="text-base">Historia clínica base</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => setEditingSummary(true)}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
+              </Button>
+            </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              {[
-                ['Motivo de consulta', record.reason_for_consultation],
-                ['Antecedentes', record.background],
-                ['Diagnóstico presuntivo', record.presumptive_diagnosis],
-                ['Diagnóstico confirmado', record.confirmed_diagnosis],
-                ['Objetivos terapéuticos', record.therapeutic_objectives],
-                ['Plan de tratamiento', record.treatment_plan],
-              ].map(([label, value]) => value && (
-                <div key={label as string}>
+              {summaryFields.map(({ key, label }) => summary[key] ? (
+                <div key={key}>
                   <p className="font-medium text-gray-500 text-xs uppercase tracking-wide">{label}</p>
-                  <p className="mt-1 whitespace-pre-wrap">{value}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{summary[key]}</p>
                 </div>
-              ))}
+              ) : null)}
+              {summaryFields.every(f => !summary[f.key]) && (
+                <p className="text-gray-400 text-center py-4">
+                  Sin datos clínicos aún.{' '}
+                  <button className="text-teal-600 underline" onClick={() => setEditingSummary(true)}>
+                    Completar resumen clínico
+                  </button>
+                </p>
+              )}
             </CardContent>
           </Card>
+
+          {/* Edit summary dialog */}
+          <Dialog open={editingSummary} onOpenChange={setEditingSummary}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>Editar resumen clínico</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                {summaryFields.map(({ key, label, rows }) => (
+                  <div key={key} className="space-y-1">
+                    <Label>{label}</Label>
+                    <Textarea
+                      value={summary[key]}
+                      onChange={e => setSummary(prev => ({ ...prev, [key]: e.target.value }))}
+                      rows={rows ?? 2}
+                      placeholder={label + '...'}
+                    />
+                  </div>
+                ))}
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button variant="outline" onClick={() => setEditingSummary(false)}>Cancelar</Button>
+                  <Button onClick={saveSummary} disabled={savingSummary} className="bg-teal-600 hover:bg-teal-700">
+                    {savingSummary && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Guardar
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="notes" className="mt-4 space-y-4">
@@ -124,7 +192,7 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
             <Card key={note.id} className={note.is_confidential ? 'border-red-200 bg-red-50/30' : ''}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{format(new Date(note.date), "dd 'de' MMMM yyyy", { locale: es })}</span>
                     <Badge className="text-xs bg-teal-100 text-teal-700">{noteTypeLabels[note.note_type]}</Badge>
                     {!note.attendance && <Badge className="text-xs bg-orange-100 text-orange-700">Ausente</Badge>}
@@ -133,12 +201,14 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
                         <Lock className="h-3 w-3" />Confidencial
                       </Badge>
                     )}
+                    {note.session_type && (
+                      <Badge className="text-xs bg-gray-100 text-gray-600">{note.session_type}</Badge>
+                    )}
                   </div>
                   <span className="text-xs text-gray-400">
                     {note.professional?.last_name}, {note.professional?.first_name} — {note.professional?.profession}
                   </span>
                 </div>
-                {note.session_type && <p className="text-xs text-gray-500">Tipo de sesión: {note.session_type}</p>}
                 {note.interventions && (
                   <div><p className="text-xs font-medium text-gray-500 uppercase">Intervenciones</p><p className="text-sm mt-1">{note.interventions}</p></div>
                 )}
@@ -154,6 +224,7 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
         </TabsContent>
       </Tabs>
 
+      {/* New note dialog */}
       <Dialog open={openNote} onOpenChange={setOpenNote}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nueva evolución</DialogTitle></DialogHeader>
@@ -183,7 +254,16 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
               </div>
               <div className="space-y-1">
                 <Label>Tipo de sesión</Label>
-                <Input {...register('session_type')} placeholder="Individual, grupal, vincular..." />
+                <Select value={watch('session_type') ?? ''} onValueChange={v => setValue('session_type', v || undefined)}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="grupal">Grupal</SelectItem>
+                    <SelectItem value="vincular">Vincular</SelectItem>
+                    <SelectItem value="familiar">Familiar</SelectItem>
+                    <SelectItem value="otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex gap-6">
@@ -193,20 +273,21 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <Checkbox checked={watch('is_confidential')} onCheckedChange={v => setValue('is_confidential', !!v)} />
+                <Lock className="h-3.5 w-3.5 text-red-500" />
                 Nota confidencial
               </label>
             </div>
             <div className="space-y-1">
               <Label>Intervenciones realizadas</Label>
-              <Textarea {...register('interventions')} rows={3} />
+              <Textarea {...register('interventions')} rows={3} placeholder="Técnicas utilizadas, recursos terapéuticos..." />
             </div>
             <div className="space-y-1">
               <Label>Observaciones clínicas</Label>
-              <Textarea {...register('clinical_observations')} rows={3} />
+              <Textarea {...register('clinical_observations')} rows={3} placeholder="Estado del paciente, evolución, aspectos relevantes..." />
             </div>
             <div className="space-y-1">
               <Label>Próximos objetivos</Label>
-              <Textarea {...register('next_objectives')} rows={2} />
+              <Textarea {...register('next_objectives')} rows={2} placeholder="Objetivos para la próxima sesión..." />
             </div>
             <div className="flex gap-3 justify-end">
               <Button type="button" variant="outline" onClick={() => setOpenNote(false)}>Cancelar</Button>
@@ -221,4 +302,3 @@ export function ClinicalRecordView({ record, notes: initialNotes, patientId, pro
     </div>
   )
 }
-

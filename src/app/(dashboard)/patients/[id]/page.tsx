@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { notFound } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,17 @@ const actionColors: Record<string, string> = {
 export default async function PatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const adminClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  )
+  const { data: profile } = user
+    ? await adminClient.from('profiles').select('role').eq('id', user.id).single()
+    : { data: null }
+  const isProfessional = profile?.role === 'professional'
 
   const [
     { data: patient },
@@ -85,8 +97,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           <TabsTrigger value="appointments">Turnos</TabsTrigger>
           <TabsTrigger value="clinical">Historia clínica</TabsTrigger>
           <TabsTrigger value="family">Familia</TabsTrigger>
-          <TabsTrigger value="finances">Finanzas</TabsTrigger>
-          <TabsTrigger value="history">Historial</TabsTrigger>
+          {!isProfessional && <TabsTrigger value="finances">Finanzas</TabsTrigger>}
+          {!isProfessional && <TabsTrigger value="history">Historial</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="info" className="mt-4">

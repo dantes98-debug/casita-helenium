@@ -297,16 +297,17 @@ export function PsychologistDashboard({ professional, appointments, patients, pa
               {pastAppts.map(a => {
                 const st = STATUS_LABEL[a.status] ?? { label: a.status, cls: 'bg-gray-100 text-gray-600' }
                 return (
-                  <div key={a.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 text-sm">
+                  <Link key={a.id} href={`/patients/${a.patient_id}/clinical-record`}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 hover:bg-teal-50 hover:border-teal-200 transition-colors text-sm">
                     <div className="min-w-[100px]">
                       <p className="text-xs font-semibold text-gray-600 capitalize">{format(parseISO(a.start_time), "EEE d 'de' MMM", { locale: es })}</p>
                       <p className="text-xs text-gray-400">{format(parseISO(a.start_time), 'HH:mm')}</p>
                     </div>
-                    <p className="text-sm text-gray-700 flex-1 truncate">
+                    <p className="text-sm text-gray-700 flex-1 truncate group-hover:text-teal-700">
                       {a.patient ? `${a.patient.last_name}, ${a.patient.first_name}` : 'Paciente'}
                     </p>
                     <Badge className={`text-xs ${st.cls}`}>{st.label}</Badge>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
