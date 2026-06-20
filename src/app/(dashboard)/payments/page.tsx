@@ -1,3 +1,4 @@
+import { requireAdminRole } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { PaymentsTable } from '@/components/payments/payments-table'
 import { Button } from '@/components/ui/button'
@@ -7,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 export default async function PaymentsPage() {
+  await requireAdminRole()
   const supabase = await createClient()
   const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
   const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd')

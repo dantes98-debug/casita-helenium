@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, isAfter } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
@@ -65,21 +65,19 @@ interface Props {
   newAppointmentBase?: string
 }
 
-function getInitialWeekOffset(appointments: Appointment[]): number {
-  const now = new Date()
-  const upcoming = appointments
-    .filter(a => isAfter(parseISO(a.start_time), now))
-    .sort((a, b) => a.start_time.localeCompare(b.start_time))
-  if (!upcoming.length) return 0
-  const firstWeekStart = startOfWeek(parseISO(upcoming[0].start_time), { weekStartsOn: 1 })
-  const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 })
-  return Math.round((firstWeekStart.getTime() - currentWeekStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
-}
-
 export function AppointmentsCalendar({ appointments, professionals, newAppointmentBase = '/appointments' }: Props) {
-  const [weekOffset, setWeekOffset] = useState(() => getInitialWeekOffset(appointments))
+  const [weekOffset, setWeekOffset] = useState(0)
   const [quickSession, setQuickSession] = useState<Appointment | null>(null)
   const [localAppts, setLocalAppts] = useState(appointments)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to current hour on mount
+  useEffect(() => {
+    if (!scrollRef.current) return
+    const now = new Date()
+    const scrollPx = Math.max(0, (now.getHours() - START_HOUR - 1) * SLOT_HEIGHT)
+    scrollRef.current.scrollTop = scrollPx
+  }, [])
 
   const baseDate = addWeeks(new Date(), weekOffset)
   const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 })
@@ -139,7 +137,7 @@ export function AppointmentsCalendar({ appointments, professionals, newAppointme
       </div>
 
       {/* Calendar grid */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div className="min-w-[640px]">
           {/* Day headers */}
           <div className="grid border-b border-gray-200" style={{ gridTemplateColumns: '56px repeat(6, 1fr)' }}>
@@ -160,6 +158,7 @@ export function AppointmentsCalendar({ appointments, professionals, newAppointme
           </div>
 
           {/* Time grid */}
+          <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '600px' }}>
           <div className="relative flex" style={{ height: totalHeight }}>
             {/* Hour labels */}
             <div className="w-14 flex-shrink-0 border-r border-gray-100 relative">
@@ -273,6 +272,7 @@ export function AppointmentsCalendar({ appointments, professionals, newAppointme
               )
             })}
           </div>
+          </div>{/* end scroll wrapper */}
         </div>
       </div>
 

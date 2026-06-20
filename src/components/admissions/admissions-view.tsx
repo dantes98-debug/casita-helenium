@@ -147,7 +147,7 @@ export function AdmissionsView({ admissions: initial, professionals }: Props) {
                   {a.next_action && <p className="text-xs text-teal-600"><b>Próxima acción:</b> {a.next_action}</p>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {(a.status === 'assigned' || a.status === 'interview_scheduled' || a.status === 'in_evaluation') && (
+                  {!['in_treatment', 'did_not_enter', 'externally_referred'].includes(a.status) && (
                     <Button
                       variant="outline"
                       size="sm"

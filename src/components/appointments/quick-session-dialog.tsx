@@ -6,9 +6,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { CheckCircle2, UserX, Loader2, FileText, ArrowRight } from 'lucide-react'
+import { CheckCircle2, UserX, Loader2, FileText, ArrowRight, Lock, SkipForward } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -26,25 +28,45 @@ interface Props {
   onDone: (id: string, status: string) => void
 }
 
+type Step = 'confirm' | 'evolution' | 'done'
+
 export function QuickSessionDialog({ appointment, open, onClose, onDone }: Props) {
-  const [notes, setNotes] = useState('')
-  const [saving, setSaving] = useState<'completed' | 'no_show' | null>(null)
-  const [done, setDone] = useState<'completed' | 'no_show' | null>(null)
+  const [step, setStep] = useState<Step>('confirm')
+  const [savingNoShow, setSavingNoShow] = useState(false)
+  const [savingEvolution, setSavingEvolution] = useState(false)
+
+  const [sessionType, setSessionType] = useState('individual')
+  const [interventions, setInterventions] = useState('')
+  const [observations, setObservations] = useState('')
+  const [nextObjectives, setNextObjectives] = useState('')
+  const [isConfidential, setIsConfidential] = useState(false)
+
   const router = useRouter()
 
-  async function handleSubmit(status: 'completed' | 'no_show') {
-    setSaving(status)
+  async function handleNoShow() {
+    setSavingNoShow(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('appointments').update({ status: 'no_show' }).eq('id', appointment.id)
+    setSavingNoShow(false)
+    if (error) { toast.error('Error al registrar ausencia'); return }
+    toast.success('Ausencia registrada')
+    onDone(appointment.id, 'no_show')
+    setStep('done')
+  }
+
+  async function handleRealizada() {
+    const supabase = createClient()
+    const { error } = await supabase.from('appointments').update({ status: 'completed' }).eq('id', appointment.id)
+    if (error) { toast.error('Error al actualizar el turno'); return }
+    onDone(appointment.id, 'completed')
+    setStep('evolution')
+  }
+
+  async function saveEvolution(skip = false) {
+    setSavingEvolution(true)
     const supabase = createClient()
 
-    const { error: apptError } = await supabase
-      .from('appointments')
-      .update({ status })
-      .eq('id', appointment.id)
-
-    if (apptError) { toast.error('Error al actualizar el turno'); setSaving(null); return }
-
-    // Save note as a clinical evolution when session completed and there are notes
-    if (notes.trim() && status === 'completed') {
+    if (!skip && (observations.trim() || interventions.trim() || nextObjectives.trim())) {
       const { data: record } = await supabase
         .from('clinical_records')
         .select('id')
@@ -52,87 +74,82 @@ export function QuickSessionDialog({ appointment, open, onClose, onDone }: Props
         .single()
 
       if (record) {
-        // Get professional_id for the note
         let professionalId = appointment.professional_id ?? null
         if (!professionalId) {
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
-            const { data: prof } = await supabase
-              .from('professionals')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle()
+            const { data: prof } = await supabase.from('professionals').select('id').eq('user_id', user.id).maybeSingle()
             professionalId = prof?.id ?? null
           }
         }
-
         if (professionalId) {
           await supabase.from('clinical_notes').insert({
             clinical_record_id: record.id,
             note_type: 'evolution',
             date: appointment.start_time.split('T')[0],
             attendance: true,
-            session_type: 'individual',
-            clinical_observations: notes.trim(),
-            is_confidential: false,
+            session_type: sessionType,
+            interventions: interventions.trim() || null,
+            clinical_observations: observations.trim() || null,
+            next_objectives: nextObjectives.trim() || null,
+            is_confidential: isConfidential,
             professional_id: professionalId,
           })
+          toast.success('Evolución guardada')
         }
       }
     }
 
-    toast.success(status === 'completed' ? 'Sesión registrada' : 'Ausencia registrada')
-    onDone(appointment.id, status)
-    setNotes('')
-    setSaving(null)
-    setDone(status)
+    setSavingEvolution(false)
+    setStep('done')
   }
 
   function handleClose() {
-    setDone(null)
+    setStep('confirm')
+    setInterventions('')
+    setObservations('')
+    setNextObjectives('')
+    setIsConfidential(false)
+    setSessionType('individual')
     onClose()
   }
 
-  // After saving — show confirmation with link to HC
-  if (done) {
+  const patientCard = (
+    <div className="bg-gray-50 rounded-lg p-3 text-sm">
+      <p className="font-medium text-gray-800">{appointment.patient_name}</p>
+      <p className="text-gray-500 text-xs mt-0.5">
+        {appointment.professional_name} · {format(parseISO(appointment.start_time), "EEEE d 'de' MMMM, HH:mm", { locale: es })}
+      </p>
+    </div>
+  )
+
+  if (step === 'confirm') {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-teal-500" />
-              {done === 'completed' ? 'Sesión registrada' : 'Ausencia registrada'}
+              <FileText className="h-5 w-5 text-teal-500" />Registrar sesión
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
-              <p className="font-medium text-gray-800">{appointment.patient_name}</p>
-              <p className="text-gray-500 text-xs mt-0.5">
-                {format(parseISO(appointment.start_time), "EEEE d 'de' MMMM, HH:mm", { locale: es })}
-              </p>
-            </div>
-            {done === 'completed' && (
-              <p className="text-sm text-gray-600">
-                {notes.trim() ? 'La nota se guardó en la historia clínica.' : '¿Querés escribir la evolución completa?'}
-              </p>
-            )}
+            {patientCard}
+            <p className="text-sm text-gray-600">¿Cómo resultó el turno?</p>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={handleClose}>
-                Cerrar
+              <Button variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                onClick={handleNoShow} disabled={savingNoShow}>
+                {savingNoShow ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserX className="h-4 w-4 mr-2" />}
+                Paciente ausente
               </Button>
-              {done === 'completed' && (
-                <Button
-                  className="flex-1 bg-teal-600 hover:bg-teal-700"
-                  onClick={() => {
-                    handleClose()
-                    router.push(`/patients/${appointment.patient_id}/clinical-record`)
-                  }}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Historia clínica
-                  <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              )}
+              <Button className="flex-1 bg-teal-600 hover:bg-teal-700" onClick={handleRealizada}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />Sesión realizada
+              </Button>
+            </div>
+            <div className="border-t pt-3">
+              <Button variant="ghost" size="sm" className="w-full text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                onClick={() => { handleClose(); router.push(`/patients/${appointment.patient_id}/clinical-record`) }}>
+                <FileText className="h-4 w-4 mr-2" />Ir directo a Historia Clínica
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -140,68 +157,86 @@ export function QuickSessionDialog({ appointment, open, onClose, onDone }: Props
     )
   }
 
+  if (step === 'evolution') {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-teal-500" />Nueva evolución
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {patientCard}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Tipo de sesión</Label>
+                <Select value={sessionType} onValueChange={setSessionType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="grupal">Grupal</SelectItem>
+                    <SelectItem value="vincular">Vincular</SelectItem>
+                    <SelectItem value="familiar">Familiar</SelectItem>
+                    <SelectItem value="otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={isConfidential} onCheckedChange={v => setIsConfidential(!!v)} />
+                  <Lock className="h-3.5 w-3.5 text-red-500" />
+                  <span className="text-xs">Confidencial</span>
+                </label>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Intervenciones realizadas</Label>
+              <Textarea value={interventions} onChange={e => setInterventions(e.target.value)}
+                rows={2} placeholder="Técnicas, recursos terapéuticos..." className="resize-none" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Observaciones clínicas</Label>
+              <Textarea value={observations} onChange={e => setObservations(e.target.value)}
+                rows={3} placeholder="Estado del paciente, evolución, aspectos relevantes..." className="resize-none" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Próximos objetivos</Label>
+              <Textarea value={nextObjectives} onChange={e => setNextObjectives(e.target.value)}
+                rows={2} placeholder="Objetivos para la próxima sesión..." className="resize-none" />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600"
+                onClick={() => saveEvolution(true)} disabled={savingEvolution}>
+                <SkipForward className="h-4 w-4 mr-1" />Saltar
+              </Button>
+              <Button className="flex-1 bg-teal-600 hover:bg-teal-700" onClick={() => saveEvolution(false)} disabled={savingEvolution}>
+                {savingEvolution ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                Guardar evolución
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  // Done state
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-teal-500" />
-            Registrar sesión
+            <CheckCircle2 className="h-5 w-5 text-teal-500" />Sesión registrada
           </DialogTitle>
         </DialogHeader>
-
         <div className="space-y-4">
-          <div className="bg-gray-50 rounded-lg p-3 text-sm">
-            <p className="font-medium text-gray-800">{appointment.patient_name}</p>
-            <p className="text-gray-500 text-xs mt-0.5">
-              {appointment.professional_name} · {format(parseISO(appointment.start_time), "EEEE d 'de' MMMM, HH:mm", { locale: es })}
-            </p>
-          </div>
-
-          <div className="space-y-1">
-            <Label>Nota de sesión <span className="text-gray-400 font-normal">(opcional)</span></Label>
-            <Textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Resumen breve de la sesión. Para una evolución completa usá la Historia Clínica."
-              rows={4}
-              className="resize-none"
-            />
-            <p className="text-xs text-gray-400">Se guarda en las observaciones clínicas de la HC.</p>
-          </div>
-
+          {patientCard}
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-              onClick={() => handleSubmit('no_show')}
-              disabled={!!saving}
-            >
-              {saving === 'no_show' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserX className="h-4 w-4 mr-2" />}
-              Ausente
-            </Button>
-            <Button
-              className="flex-1 bg-teal-600 hover:bg-teal-700"
-              onClick={() => handleSubmit('completed')}
-              disabled={!!saving}
-            >
-              {saving === 'completed' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Realizada
-            </Button>
-          </div>
-
-          <div className="border-t pt-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-              onClick={() => {
-                handleClose()
-                router.push(`/patients/${appointment.patient_id}/clinical-record`)
-              }}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Ir directo a Historia Clínica
+            <Button variant="outline" className="flex-1" onClick={handleClose}>Cerrar</Button>
+            <Button className="flex-1 bg-teal-600 hover:bg-teal-700"
+              onClick={() => { handleClose(); router.push(`/patients/${appointment.patient_id}/clinical-record`) }}>
+              <FileText className="h-4 w-4 mr-2" />Historia clínica<ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </div>

@@ -35,6 +35,7 @@ interface Props {
   patients: Patient[]
   payments: Payment[]
   roomBookings: RoomBooking[]
+  today?: string
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -49,8 +50,8 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   rescheduled: { label: 'Reprogramado', cls: 'bg-purple-100 text-purple-700' },
 }
 
-export function PsychologistDashboard({ professional, appointments, patients, payments, roomBookings }: Props) {
-  const now = new Date()
+export function PsychologistDashboard({ professional, appointments, patients, payments, roomBookings, today }: Props) {
+  const now = today ? new Date(today) : new Date()
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const todayAppts = useMemo(() => appointments.filter(a => isSameDay(parseISO(a.start_time), now)), [appointments])

@@ -1,3 +1,4 @@
+import { requireAdminRole } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -42,6 +43,7 @@ function humanLabel(action: string, tableName: string): string {
 }
 
 export default async function AuditPage() {
+  await requireAdminRole()
   const supabase = await createClient()
   const { data: logs } = await supabase
     .from('audit_logs')
@@ -93,7 +95,9 @@ export default async function AuditPage() {
                           <span className="text-gray-600">{humanLabel(log.action, log.table_name)}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-400 text-xs hidden sm:table-cell font-mono">{log.table_name}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs hidden sm:table-cell">
+                        {(() => { const s = tableLabels[log.table_name]?.singular; return s ? s.charAt(0).toUpperCase() + s.slice(1) : log.table_name })()}
+                      </td>
                     </tr>
                   )
                 })}

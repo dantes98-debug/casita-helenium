@@ -169,8 +169,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
                       <th className="text-left px-3 py-2">Fecha</th>
                       <th className="text-left px-3 py-2">Profesional</th>
                       <th className="text-left px-3 py-2">Estado</th>
-                      <th className="text-left px-3 py-2">Pago</th>
-                      <th className="text-left px-3 py-2">Valor</th>
+                      {!isProfessional && <th className="text-left px-3 py-2">Pago</th>}
+                      {!isProfessional && <th className="text-left px-3 py-2">Valor</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -179,9 +179,14 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
                       <tr key={a.id} className="hover:bg-gray-50">
                         <td className="px-3 py-2">{format(new Date(a.start_time), 'dd/MM/yyyy HH:mm')}</td>
                         <td className="px-3 py-2">{a.professional?.last_name}, {a.professional?.first_name}</td>
-                        <td className="px-3 py-2"><Badge className="text-xs">{a.status}</Badge></td>
-                        <td className="px-3 py-2"><Badge className={`text-xs ${a.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.payment_status === 'paid' ? 'Pagado' : 'Pendiente'}</Badge></td>
-                        <td className="px-3 py-2">{a.value ? `$${a.value}` : '—'}</td>
+                        <td className="px-3 py-2"><Badge className="text-xs">{{
+                          reserved: 'Reservado', pending_confirmation: 'Por confirmar', confirmed: 'Confirmado',
+                          completed: 'Realizado', absent: 'Ausente', no_show: 'Ausente',
+                          cancelled_with_notice: 'Cancelado', cancelled_without_notice: 'Cancelado',
+                          rescheduled: 'Reprogramado',
+                        }[a.status as string] ?? a.status}</Badge></td>
+                        {!isProfessional && <td className="px-3 py-2"><Badge className={`text-xs ${a.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.payment_status === 'paid' ? 'Pagado' : 'Pendiente'}</Badge></td>}
+                        {!isProfessional && <td className="px-3 py-2">{a.value ? `$${a.value}` : '—'}</td>}
                       </tr>
                     ))}
                   </tbody>

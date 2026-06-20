@@ -1,3 +1,4 @@
+import { requireAdminRole } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RevenueChart } from '@/components/dashboard/revenue-chart'
@@ -7,6 +8,7 @@ import { format, startOfMonth, endOfMonth, subMonths, subDays, endOfDay, parse }
 import { es } from 'date-fns/locale'
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+  await requireAdminRole()
   const supabase = await createClient()
   const { month } = await searchParams
   const activeMonth = month ?? format(new Date(), 'yyyy-MM')

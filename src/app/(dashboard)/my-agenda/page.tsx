@@ -1,3 +1,4 @@
+import { nowInArgentina } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import { redirect } from 'next/navigation'
@@ -63,7 +64,7 @@ export default async function MyAgendaPage() {
     )
   }
 
-  const now = new Date()
+  const now = nowInArgentina()
   const calStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }).toISOString()
   const calEnd = endOfWeek(addWeeks(now, 3), { weekStartsOn: 1 }).toISOString()
   const monthStart = startOfMonth(now).toISOString()
@@ -156,6 +157,7 @@ export default async function MyAgendaPage() {
             patients={patients ?? []}
             payments={myPayments}
             roomBookings={(roomBookings as any) ?? []}
+            today={now.toISOString()}
           />
         </TabsContent>
 

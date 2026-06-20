@@ -1,3 +1,4 @@
+import { requireAdminRole } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +20,7 @@ const typeLabels: Record<string, string> = {
 }
 
 export default async function ProfessionalDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminRole()
   const { id } = await params
   const supabase = await createClient()
 

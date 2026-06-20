@@ -1,7 +1,9 @@
+import { requireAdminRole } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { AdmissionsView } from '@/components/admissions/admissions-view'
 
 export default async function AdmissionsPage() {
+  await requireAdminRole()
   const supabase = await createClient()
   const [{ data: admissions }, { data: professionals }] = await Promise.all([
     supabase.from('admissions').select(`*, professional:professionals(first_name, last_name)`).order('contact_date', { ascending: false }),

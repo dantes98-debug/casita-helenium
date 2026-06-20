@@ -1,5 +1,6 @@
 export const revalidate = 60
 
+import { requireAdminRole, nowInArgentina } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { KPICard } from '@/components/dashboard/kpi-card'
 import { AppointmentsChart } from '@/components/dashboard/appointments-chart'
@@ -16,8 +17,9 @@ import {
 } from 'lucide-react'
 
 export default async function DashboardPage() {
+  await requireAdminRole()
   const supabase = await createClient()
-  const now = new Date()
+  const now = nowInArgentina()
   const monthStart = format(startOfMonth(now), 'yyyy-MM-dd')
   const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
   const todayStart = startOfDay(now).toISOString()

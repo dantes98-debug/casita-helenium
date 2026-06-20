@@ -1,3 +1,4 @@
+import { requireAdminRole } from '@/lib/auth-guards'
 import { createClient } from '@/lib/supabase/server'
 import { ProfessionalsTable } from '@/components/professionals/professionals-table'
 import { ProfessionalPerformance } from '@/components/professionals/professional-performance'
@@ -8,6 +9,7 @@ import { Plus, Users, TrendingUp } from 'lucide-react'
 import { startOfMonth, endOfMonth } from 'date-fns'
 
 export default async function ProfessionalsPage() {
+  await requireAdminRole()
   const supabase = await createClient()
 
   const now = new Date()
