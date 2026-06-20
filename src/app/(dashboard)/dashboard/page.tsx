@@ -229,36 +229,43 @@ export default async function DashboardPage() {
             </span>
           )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="bg-teal-50 border-teal-100">
-            <CardContent className="p-4">
-              <p className="text-xs text-gray-500 uppercase mb-1">Ingreso centro</p>
-              <p className="text-2xl font-bold text-teal-700">${centerShare.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
-              <p className="text-xs text-gray-400 mt-0.5">comisiones + alquiler consultorios</p>
+        {monthlyRevenue === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="p-8 text-center text-gray-400">
+              <p className="text-sm">Sin pagos registrados este mes.</p>
+              <p className="text-xs mt-1">Registrá el primer pago en <a href="/payments/new" className="text-teal-600 underline">Pagos → Nuevo pago</a>.</p>
             </CardContent>
           </Card>
-          <Card className="bg-blue-50 border-blue-100">
-            <CardContent className="p-4">
-              <p className="text-xs text-gray-500 uppercase mb-1">Pagos a profesionales</p>
-              <p className="text-2xl font-bold text-blue-700">${profsShare.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
-              <p className="text-xs text-gray-400 mt-0.5">lo que reciben en total</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-50 border-gray-200">
-            <CardContent className="p-4">
-              <p className="text-xs text-gray-500 uppercase mb-1">Total facturado</p>
-              <p className="text-2xl font-bold text-gray-700">${monthlyRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
-              {monthlyRevenue > 0 && (
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="bg-teal-50 border-teal-100">
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500 uppercase mb-1">Ingreso centro</p>
+                <p className="text-2xl font-bold text-teal-700">${centerShare.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+                <p className="text-xs text-gray-400 mt-0.5">comisiones + alquiler consultorios</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-blue-50 border-blue-100">
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500 uppercase mb-1">Pagos a profesionales</p>
+                <p className="text-2xl font-bold text-blue-700">${profsShare.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+                <p className="text-xs text-gray-400 mt-0.5">lo que reciben en total</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-50 border-gray-200">
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500 uppercase mb-1">Total facturado</p>
+                <p className="text-2xl font-bold text-gray-700">${monthlyRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
                 <div className="mt-2 h-2 rounded-full bg-blue-200 overflow-hidden">
                   <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(centerShare / monthlyRevenue) * 100}%` }} />
                 </div>
-              )}
-              <p className="text-xs text-gray-400 mt-1">
-                {monthlyRevenue > 0 ? `Centro ${Math.round((centerShare / monthlyRevenue) * 100)}% · Profs ${Math.round((profsShare / monthlyRevenue) * 100)}%` : 'Sin datos'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Centro {Math.round((centerShare / monthlyRevenue) * 100)}% · Profs {Math.round((profsShare / monthlyRevenue) * 100)}%
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

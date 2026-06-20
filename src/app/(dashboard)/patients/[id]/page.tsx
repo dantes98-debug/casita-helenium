@@ -41,7 +41,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     supabase.from('patients').select(`*, primary_professional:professionals(first_name, last_name, profession)`).eq('id', id).is('deleted_at', null).single(),
     supabase.from('family_members').select('*').eq('patient_id', id),
     supabase.from('appointments').select(`id, start_time, end_time, status, payment_status, value, professional:professionals(first_name, last_name)`)
-      .eq('patient_id', id).order('start_time', { ascending: false }).limit(10),
+      .eq('patient_id', id).order('start_time', { ascending: false }).limit(20),
     supabase.from('debts').select('*').eq('patient_id', id).in('status', ['active', 'partially_paid']),
     supabase.from('clinical_records').select('id, status').eq('patient_id', id).single(),
     supabase.from('audit_logs').select('id, action, table_name, old_values, new_values, created_at')
@@ -51,6 +51,15 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
   if (!patient) notFound()
   const age = patient.birth_date ? differenceInYears(new Date(), new Date(patient.birth_date)) : null
   const totalDebt = debts?.reduce((acc, d) => acc + d.amount, 0) ?? 0
+
+  const now = new Date()
+  const completedStatuses = ['completed', 'confirmed', 'reserved', 'pending_confirmation']
+  const lastSession = appointments?.find(a =>
+    new Date(a.start_time) < now && completedStatuses.includes(a.status)
+  ) ?? null
+  const nextAppointment = appointments?.slice().reverse().find(a =>
+    new Date(a.start_time) > now && ['reserved', 'confirmed', 'pending_confirmation'].includes(a.status)
+  ) ?? null
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
@@ -118,6 +127,12 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
                 )}
                 {patient.observations && (
                   <div><span className="text-gray-400">Observaciones:</span><br />{patient.observations}</div>
+                )}
+                {lastSession && (
+                  <div><span className="text-gray-400">Última sesión:</span> {format(new Date(lastSession.start_time), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}</div>
+                )}
+                {nextAppointment && (
+                  <div><span className="text-gray-400">Próximo turno:</span> {format(new Date(nextAppointment.start_time), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}</div>
                 )}
               </CardContent>
             </Card>

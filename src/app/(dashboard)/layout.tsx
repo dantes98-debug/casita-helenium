@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { ProfessionalOnboarding } from '@/components/onboarding/professional-onboarding'
@@ -10,7 +11,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  // Use service role to bypass any RLS/session propagation issues when fetching the profile.
+  // getUser() already verified the user's identity; we just need their role and name.
+  const adminClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  )
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('full_name, role, onboarding_completed_at')
     .eq('id', user.id)

@@ -41,6 +41,7 @@ const statusLabels: Record<string, string> = {
 const admissionSchema = z.object({
   contact_date: z.string().min(1), patient_first_name: z.string().min(1, 'Nombre requerido'),
   patient_last_name: z.string().optional(), responsible_name: z.string().optional(),
+  dni: z.string().optional(),
   phone: z.string().min(1, 'Teléfono requerido'), reason_for_consultation: z.string().optional(),
   referral_source: z.string().optional(), suggested_professional_id: z.string().optional(),
   status: z.string().min(1).default('inquiry_received'), next_action: z.string().optional(),
@@ -70,6 +71,7 @@ export function AdmissionsView({ admissions: initial, professionals }: Props) {
         first_name: admission.patient_first_name,
         last_name: admission.patient_last_name ?? null,
         phone: admission.phone ?? null,
+        dni: (admission as any).dni ?? null,
         primary_professional_id: admission.suggested_professional_id ?? null,
         status: 'active',
         admission_date: admission.contact_date,
@@ -137,6 +139,7 @@ export function AdmissionsView({ admissions: initial, professionals }: Props) {
                   <div className="text-sm text-gray-600 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
                     <span><b>Tel:</b> {a.phone}</span>
                     <span><b>Fecha:</b> {format(new Date(a.contact_date), 'dd/MM/yyyy')}</span>
+                    {(a as any).dni && <span><b>DNI:</b> {(a as any).dni}</span>}
                     {a.referral_source && <span><b>Fuente:</b> {a.referral_source}</span>}
                     {a.professional && <span><b>Prof sugerido:</b> {a.professional.last_name}</span>}
                   </div>
@@ -183,6 +186,10 @@ export function AdmissionsView({ admissions: initial, professionals }: Props) {
               <div className="space-y-1">
                 <Label>Responsable</Label>
                 <Input {...register('responsible_name')} />
+              </div>
+              <div className="space-y-1">
+                <Label>DNI</Label>
+                <Input {...register('dni')} placeholder="12345678" />
               </div>
               <div className="space-y-1">
                 <Label>Teléfono *</Label>

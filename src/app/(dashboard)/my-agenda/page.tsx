@@ -40,7 +40,18 @@ export default async function MyAgendaPage() {
     }
   }
 
-  if (!professional) redirect('/my-dashboard')
+  if (!professional) {
+    return (
+      <div className="p-8 max-w-lg mx-auto mt-16 text-center space-y-4">
+        <h1 className="text-xl font-semibold text-gray-800">Sin registro profesional</h1>
+        <p className="text-gray-500 text-sm">
+          Tu cuenta de usuario no está vinculada a un registro profesional en el sistema.
+          Pedile a un administrador que vincule tu cuenta en la sección Profesionales.
+        </p>
+        <p className="text-xs text-gray-400">Usuario: {user.email}</p>
+      </div>
+    )
+  }
 
   const adminClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
