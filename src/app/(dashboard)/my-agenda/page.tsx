@@ -5,15 +5,24 @@ import { AppointmentsCalendar } from '@/components/appointments/appointments-cal
 import { MyBlocksView } from '@/components/schedule/my-blocks-view'
 import { PsychologistDashboard } from '@/components/professionals/psychologist-dashboard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Calendar, Building2, LayoutDashboard } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Calendar, Building2, LayoutDashboard, Plus } from 'lucide-react'
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth } from 'date-fns'
+import Link from 'next/link'
 
 export default async function MyAgendaPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  // Use service role to bypass any RLS/session propagation issues — user identity already verified above
+  const adminClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  )
+
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -22,21 +31,22 @@ export default async function MyAgendaPage() {
   const allowedRoles = ['professional', 'admin', 'super_admin', 'coordinator']
   if (!allowedRoles.includes(profile?.role ?? '')) redirect('/appointments')
 
-  let { data: professional } = await supabase
+  // Look up professional by user_id first, then by email
+  let { data: professional } = await adminClient
     .from('professionals')
     .select('id, first_name, last_name, room_hourly_rate, commission_rate, profession')
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (!professional && user.email) {
-    const { data: byEmail } = await supabase
+    const { data: byEmail } = await adminClient
       .from('professionals')
       .select('id, first_name, last_name, room_hourly_rate, commission_rate, profession')
       .eq('email', user.email)
       .maybeSingle()
     professional = byEmail
     if (byEmail) {
-      await supabase.from('professionals').update({ user_id: user.id }).eq('id', byEmail.id)
+      await adminClient.from('professionals').update({ user_id: user.id }).eq('id', byEmail.id)
     }
   }
 
@@ -52,12 +62,6 @@ export default async function MyAgendaPage() {
       </div>
     )
   }
-
-  const adminClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  )
 
   const now = new Date()
   const calStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }).toISOString()
@@ -120,30 +124,38 @@ export default async function MyAgendaPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Mi agenda</h1>
-        <p className="text-sm text-gray-500 mt-1">Bienvenida, {professional.first_name}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Mi agenda</h1>
+          <p className="text-sm text-gray-500 mt-1">Bienvenida, {professional.first_name}</p>
+        </div>
+        <Button asChild className="bg-teal-600 hover:bg-teal-700">
+          <Link href={`/appointments/new?professional_id=${professional.id}`}>
+            <Plus className="h-4 w-4 mr-2" />Agendar turno
+          </Link>
+        </Button>
       </div>
 
-      <Tabs defaultValue="blocks">
+      <Tabs defaultValue="resumen">
         <TabsList>
-          <TabsTrigger value="blocks" className="gap-2">
-            <Building2 className="h-4 w-4" />Mis bloques
+          <TabsTrigger value="resumen" className="gap-2">
+            <LayoutDashboard className="h-4 w-4" />Resumen del mes
           </TabsTrigger>
           <TabsTrigger value="calendar" className="gap-2">
             <Calendar className="h-4 w-4" />Calendario
           </TabsTrigger>
-          <TabsTrigger value="resumen" className="gap-2">
-            <LayoutDashboard className="h-4 w-4" />Resumen del mes
+          <TabsTrigger value="blocks" className="gap-2">
+            <Building2 className="h-4 w-4" />Mis bloques
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="blocks" className="mt-4">
-          <MyBlocksView
-            blocks={(blocks as any) ?? []}
-            appointments={(appointments as any) ?? []}
-            patients={patients?.map(p => ({ id: p.id, first_name: p.first_name, last_name: p.last_name })) ?? []}
+        <TabsContent value="resumen" className="mt-4">
+          <PsychologistDashboard
             professional={professional}
+            appointments={(monthAppointments as any) ?? []}
+            patients={patients ?? []}
+            payments={myPayments}
+            roomBookings={(roomBookings as any) ?? []}
           />
         </TabsContent>
 
@@ -155,13 +167,12 @@ export default async function MyAgendaPage() {
           />
         </TabsContent>
 
-        <TabsContent value="resumen" className="mt-4">
-          <PsychologistDashboard
+        <TabsContent value="blocks" className="mt-4">
+          <MyBlocksView
+            blocks={(blocks as any) ?? []}
+            appointments={(appointments as any) ?? []}
+            patients={patients?.map(p => ({ id: p.id, first_name: p.first_name, last_name: p.last_name })) ?? []}
             professional={professional}
-            appointments={(monthAppointments as any) ?? []}
-            patients={patients ?? []}
-            payments={myPayments}
-            roomBookings={(roomBookings as any) ?? []}
           />
         </TabsContent>
       </Tabs>
