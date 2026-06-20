@@ -79,7 +79,7 @@ export default async function MyAgendaPage() {
   ] = await Promise.all([
     adminClient
       .from('appointments')
-      .select('id, patient_id, start_time, end_time, status, notes, professional_id, patient:patients(first_name, last_name), professional:professionals(first_name, last_name)')
+      .select('id, patient_id, start_time, end_time, status, admin_notes, clinical_notes, professional_id, patient:patients(first_name, last_name), professional:professionals(first_name, last_name)')
       .eq('professional_id', professional.id)
       .gte('start_time', calStart)
       .lte('start_time', calEnd)
@@ -100,7 +100,7 @@ export default async function MyAgendaPage() {
       .is('deleted_at', null),
     adminClient
       .from('appointments')
-      .select('id, patient_id, start_time, end_time, status, notes, professional_id, patient:patients(first_name, last_name), professional:professionals(first_name, last_name)')
+      .select('id, patient_id, start_time, end_time, status, admin_notes, clinical_notes, professional_id, patient:patients(first_name, last_name), professional:professionals(first_name, last_name)')
       .eq('professional_id', professional.id)
       .gte('start_time', monthStart)
       .lte('start_time', monthEnd)
@@ -130,7 +130,7 @@ export default async function MyAgendaPage() {
           <p className="text-sm text-gray-500 mt-1">Bienvenida, {professional.first_name}</p>
         </div>
         <Button asChild className="bg-teal-600 hover:bg-teal-700">
-          <Link href={`/appointments/new?professional_id=${professional.id}`}>
+          <Link href={`/appointments/new?default_professional_id=${professional.id}`}>
             <Plus className="h-4 w-4 mr-2" />Agendar turno
           </Link>
         </Button>
@@ -163,7 +163,7 @@ export default async function MyAgendaPage() {
           <AppointmentsCalendar
             appointments={(appointments as any) ?? []}
             professionals={[{ id: professional.id, first_name: professional.first_name, last_name: professional.last_name }]}
-            newAppointmentBase="/my-agenda"
+            newAppointmentBase="/appointments"
           />
         </TabsContent>
 
