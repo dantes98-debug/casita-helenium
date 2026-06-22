@@ -24,11 +24,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq('id', user.id)
     .single()
 
+  // Check if this user also has a professional record (admin who is also a psychologist)
+  const { data: professionalRecord } = await adminClient
+    .from('professionals')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const hasProfessionalRecord = !!professionalRecord
   const showOnboarding = profile?.role === 'professional' && !profile?.onboarding_completed_at
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar userRole={profile?.role as UserRole} userName={profile?.full_name} />
+      <Sidebar userRole={profile?.role as UserRole} userName={profile?.full_name} hasProfessionalRecord={hasProfessionalRecord} />
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>

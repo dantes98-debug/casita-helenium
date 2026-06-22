@@ -79,9 +79,10 @@ interface SidebarProps {
   userRole?: UserRole
   userName?: string
   collapsed?: boolean
+  hasProfessionalRecord?: boolean
 }
 
-export function Sidebar({ userRole = 'admin', userName, collapsed = false }: SidebarProps) {
+export function Sidebar({ userRole = 'admin', userName, collapsed = false, hasProfessionalRecord = false }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -116,6 +117,24 @@ export function Sidebar({ userRole = 'admin', userName, collapsed = false }: Sid
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2">
+        {/* Mi perfil — visible for admins who also have a professional record */}
+        {hasProfessionalRecord && userRole !== 'professional' && (
+          <div className="pb-3">
+            <Link
+              href="/my-profile"
+              prefetch={false}
+              className={cn(
+                'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors',
+                pathname === '/my-profile'
+                  ? 'bg-teal-700 text-white'
+                  : 'text-teal-200 hover:bg-teal-800 hover:text-white'
+              )}
+            >
+              <User className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="truncate">Mi perfil profesional</span>}
+            </Link>
+          </div>
+        )}
         {navGroups.map((group, gi) => {
           // Filter items visible to this role
           const visibleItems = group.items.filter(item =>
